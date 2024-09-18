@@ -30,6 +30,9 @@ A simple Python-based network monitoring tool that tracks upload and download sp
 - Python 3.x
 - `psutil` (for network monitoring)
 - `tkinter` (for GUI)
+- `matplotlib` (for real-time graphing)
+- `pystray` (for system tray functionality)
+- `Pillow` (for creating system tray icons)
 
 ---
 
