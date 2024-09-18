@@ -3,16 +3,16 @@
 ---
 
 ### **Table of Contents**
-1. [Overview](#overview)
-2. [Project Structure](#project-structure)
-3. [Features](#features)
-4. [How It Works](#how-it-works)
-5. [Customization Options](#customization-options)
-6. [Graphical User Interface (GUI)](#graphical-user-interface)
-7. [Logging Functionality](#logging-functionality)
-8. [System Tray Integration](#system-tray-integration)
-9. [Contributing Guidelines](#contributing-guidelines)
-10. [Known Issues and Future Improvements](#known-issues-and-future-improvements)
+1. [Overview](#1-overview)
+2. [Project Structure](#2-project-structure)
+3. [Features](#3-features)
+4. [How It Works](#4-how-it-works)
+5. [Customization Options](#5-customization-options)
+6. [Graphical User Interface (GUI)](#6-graphical-user-interface-gui)
+7. [Logging Functionality](#7-logging-functionality)
+8. [System Tray Integration](#8-system-tray-integration)
+9. [Contributing Guidelines](#9-contributing-guidelines)
+10. [Known Issues and Future Improvements](#10-known-issues-and-future-improvements)
 
 ---
 
@@ -42,10 +42,6 @@ The **Network Monitoring Tool** is a Python application designed to track real-t
 ### **4. How It Works**
 The application uses Python’s `psutil` library to fetch network statistics from the system. It periodically checks the amount of data sent and received by the network interface, calculates the speeds, and displays the data in the GUI.
 
-- **Network Monitoring**: `psutil.net_io_counters()` retrieves the bytes sent/received by the network.
-- **Speed Calculation**: By tracking the difference in sent/received bytes between intervals, the app calculates upload/download speeds.
-- **Threshold Alerts**: If the upload or download speed exceeds a user-defined threshold, an alert is displayed.
-
 ---
 
 ### **5. Customization Options**
@@ -67,7 +63,7 @@ The GUI provides real-time feedback on network performance. The key components a
 
 ### **7. Logging Functionality**
 If logging is enabled, the network speeds are written to `network.log`. The format of the log entries is:
-
+[Timestamp] Upload: [Speed] KB/s, Download: [Speed] KB/s
 
 You can modify the logging behavior in the `main.py` file by changing the logging level or file format.
 
