@@ -1,3 +1,9 @@
+This project is a concept tool for monitoring network upload and download speeds. 
+It serves as an experimental example of how to track network data using Python with GUI elements.
+ I will be exploring other projects moving forward.
+
+
+
 # Network Monitoring Tool
 
 ![Python Version](https://img.shields.io/badge/Python-3.x-blue)

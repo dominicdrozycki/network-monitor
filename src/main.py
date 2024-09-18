@@ -8,10 +8,11 @@ from matplotlib.animation import FuncAnimation
 import threading
 import pystray
 from PIL import Image, ImageDraw
+from datetime import datetime
 
-# Initialize default thresholds for upload and download speeds (in Bytes per second)
-UPLOAD_THRESHOLD = 100 * 1024  # 100 KB/s in Bytes
-DOWNLOAD_THRESHOLD = 100 * 1024
+# Initialize default thresholds for upload and download speeds (in Mbps)
+UPLOAD_THRESHOLD = 200  # 200 Mbps
+DOWNLOAD_THRESHOLD = 200
 
 # Data lists for plotting
 upload_data = []
@@ -49,8 +50,8 @@ def get_network_usage():
 
 # Function to calculate the upload and download speeds
 def calculate_speed(sent, recv, prev_sent, prev_recv):
-    upload_speed = sent - prev_sent
-    download_speed = recv - prev_recv
+    upload_speed = (sent - prev_sent) * 8 / 1024 / 1024  # Convert to Mbps
+    download_speed = (recv - prev_recv) * 8 / 1024 / 1024  # Convert to Mbps
     return upload_speed, download_speed
 
 # Function to update the GUI and check the current network usage
@@ -65,39 +66,36 @@ def update_gui():
     sent, recv = get_network_usage()
     upload_speed, download_speed = calculate_speed(sent, recv, prev_sent, prev_recv)
 
-    upload_speed_kb = upload_speed / 1024
-    download_speed_kb = download_speed / 1024
-
     # Update total data transferred
     total_uploaded += upload_speed
     total_downloaded += download_speed
 
     # Update max speeds
-    max_upload_speed = max(max_upload_speed, upload_speed_kb)
-    max_download_speed = max(max_download_speed, download_speed_kb)
+    max_upload_speed = max(max_upload_speed, upload_speed)
+    max_download_speed = max(max_download_speed, download_speed)
 
     # Update average speeds
     total_time += 1  # We update every second
-    average_upload_speed = (total_uploaded / total_time) / 1024
-    average_download_speed = (total_downloaded / total_time) / 1024
+    average_upload_speed = total_uploaded / total_time
+    average_download_speed = total_downloaded / total_time
 
     # Update GUI Labels for speeds
-    upload_label.config(text=f"Upload Speed: {upload_speed_kb:.2f} KB/s")
-    download_label.config(text=f"Download Speed: {download_speed_kb:.2f} KB/s")
+    upload_label.config(text=f"Upload Speed: {upload_speed:.2f} Mbps")
+    download_label.config(text=f"Download Speed: {download_speed:.2f} Mbps")
 
     # Update GUI Labels for additional statistics
-    total_uploaded_mb = total_uploaded / (1024 * 1024)
-    total_downloaded_mb = total_downloaded / (1024 * 1024)
+    total_uploaded_mb = total_uploaded
+    total_downloaded_mb = total_downloaded
     total_data_label.config(text=f"Total Uploaded: {total_uploaded_mb:.2f} MB\n"
                                  f"Total Downloaded: {total_downloaded_mb:.2f} MB")
-    avg_speed_label.config(text=f"Average Upload: {average_upload_speed:.2f} KB/s\n"
-                                f"Average Download: {average_download_speed:.2f} KB/s")
-    max_speed_label.config(text=f"Max Upload: {max_upload_speed:.2f} KB/s\n"
-                                f"Max Download: {max_download_speed:.2f} KB/s")
+    avg_speed_label.config(text=f"Average Upload: {average_upload_speed:.2f} Mbps\n"
+                                f"Average Download: {average_download_speed:.2f} Mbps")
+    max_speed_label.config(text=f"Max Upload: {max_upload_speed:.2f} Mbps\n"
+                                f"Max Download: {max_download_speed:.2f} Mbps")
 
     # Log network data if logging is enabled
     if logging_enabled:
-        logging.info(f"Upload: {upload_speed_kb:.2f} KB/s, Download: {download_speed_kb:.2f} KB/s")
+        logging.info(f"Upload: {upload_speed:.2f} Mbps, Download: {download_speed:.2f} Mbps")
 
     # Display a warning if upload or download speed exceeds the threshold
     if upload_speed > UPLOAD_THRESHOLD:
@@ -110,9 +108,9 @@ def update_gui():
     prev_recv = recv
 
     # Append data for graphing
-    upload_data.append(upload_speed_kb)
-    download_data.append(download_speed_kb)
-    time_data.append(time.time())
+    upload_data.append(upload_speed)
+    download_data.append(download_speed)
+    time_data.append(datetime.now().strftime("%H:%M:%S"))
 
     # Call this function again after 1000 ms (1 second)
     root.after(1000, update_gui)
@@ -120,10 +118,10 @@ def update_gui():
 # Function to update the real-time graph
 def update_graph(frame):
     plt.cla()  # Clear the current axes
-    plt.plot(time_data[-60:], upload_data[-60:], label='Upload Speed (KB/s)')
-    plt.plot(time_data[-60:], download_data[-60:], label='Download Speed (KB/s)')
-    plt.xlabel('Time')
-    plt.ylabel('Speed (KB/s)')
+    plt.plot(time_data[-60:], upload_data[-60:], label='Upload Speed (Mbps)')
+    plt.plot(time_data[-60:], download_data[-60:], label='Download Speed (Mbps)')
+    plt.xlabel('Time (H:M:S)')
+    plt.ylabel('Speed (Mbps)')
     plt.title('Real-Time Network Speed')
     plt.legend()
 
@@ -131,9 +129,9 @@ def update_graph(frame):
 def apply_thresholds():
     global UPLOAD_THRESHOLD, DOWNLOAD_THRESHOLD
     try:
-        # Convert input from KB/s to Bytes/s
-        UPLOAD_THRESHOLD = int(upload_threshold_entry.get()) * 1024
-        DOWNLOAD_THRESHOLD = int(download_threshold_entry.get()) * 1024
+        # Convert input from Mbps
+        UPLOAD_THRESHOLD = int(upload_threshold_entry.get())
+        DOWNLOAD_THRESHOLD = int(download_threshold_entry.get())
         messagebox.showinfo("Success", "Thresholds updated successfully!")
     except ValueError:
         messagebox.showerror("Error", "Please enter valid numbers for thresholds!")
@@ -163,22 +161,30 @@ def create_image():
     draw.ellipse((width // 4, height // 4, 3 * width // 4, 3 * height // 4), fill='red')
     return image
 
-# Hide the window and minimize to tray
+# Function to minimize both the main window and the graph
 def hide_window(icon, item):
-    global app_running
+    global app_running, graph_window
     app_running = False
     root.withdraw()  # Hide the main window
 
-# Show the window again
+    if graph_window:
+        graph_window.canvas.manager.window.withdraw()  # Hide the graph window
+
+# Function to restore both the main window and the graph window
 def show_window(icon, item):
-    global app_running
+    global app_running, graph_window
     app_running = True
     root.deiconify()  # Restore the main window
+    root.state('normal')  # Ensure it's not minimized
 
-# Stop the app from the tray
+    # Bring the graph window to the front
+    if graph_window:
+        graph_window.canvas.manager.window.deiconify()  # Show the graph window
+        graph_window.canvas.manager.window.raise_()  # Bring it to the front
+
 def quit_app(icon, item):
     icon.stop()
-    root.quit()
+    root.quit()  # Properly stop the application
 
 # Set up the system tray icon with pystray
 def setup_tray():
@@ -189,9 +195,13 @@ def setup_tray():
     ))
     icon.run()
 
-# Thread function to run matplotlib plot in parallel
+# Define a global variable to track the graph window
+graph_window = None
+
 def plot_graph():
+    global graph_window
     fig = plt.figure()
+    graph_window = plt.gcf()  # Get a reference to the current figure (graph window)
     ani = FuncAnimation(fig, update_graph, interval=1000)
     plt.show()
 
@@ -224,15 +234,15 @@ if __name__ == "__main__":
     interface_dropdown.pack(pady=5)
 
     # Input for upload speed threshold
-    tk.Label(root, text="Upload Threshold (KB/s):", font=('Helvetica', 10)).pack(pady=5)
+    tk.Label(root, text="Upload Threshold (Mbps):", font=('Helvetica', 10)).pack(pady=5)
     upload_threshold_entry = tk.Entry(root)
-    upload_threshold_entry.insert(0, str(UPLOAD_THRESHOLD // 1024))  # Set default value in KB
+    upload_threshold_entry.insert(0, str(UPLOAD_THRESHOLD))  # Set default value in Mbps
     upload_threshold_entry.pack(pady=5)
 
     # Input for download speed threshold
-    tk.Label(root, text="Download Threshold (KB/s):", font=('Helvetica', 10)).pack(pady=5)
+    tk.Label(root, text="Download Threshold (Mbps):", font=('Helvetica', 10)).pack(pady=5)
     download_threshold_entry = tk.Entry(root)
-    download_threshold_entry.insert(0, str(DOWNLOAD_THRESHOLD // 1024))  # Set default value in KB
+    download_threshold_entry.insert(0, str(DOWNLOAD_THRESHOLD))  # Set default value in Mbps
     download_threshold_entry.pack(pady=5)
 
     # Button to apply custom thresholds
@@ -249,11 +259,11 @@ if __name__ == "__main__":
     total_data_label.pack(pady=10)
 
     # Label for average speeds
-    avg_speed_label = tk.Label(root, text="Average Upload: 0.00 KB/s\nAverage Download: 0.00 KB/s", font=('Helvetica', 10))
+    avg_speed_label = tk.Label(root, text="Average Upload: 0.00 Mbps\nAverage Download: 0.00 Mbps", font=('Helvetica', 10))
     avg_speed_label.pack(pady=10)
 
     # Label for max speeds
-    max_speed_label = tk.Label(root, text="Max Upload: 0.00 KB/s\nMax Download: 0.00 KB/s", font=('Helvetica', 10))
+    max_speed_label = tk.Label(root, text="Max Upload: 0.00 Mbps\nMax Download: 0.00 Mbps", font=('Helvetica', 10))
     max_speed_label.pack(pady=10)
 
     # Set up the system tray
